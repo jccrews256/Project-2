@@ -10,6 +10,8 @@ editor: visual
 ```{r}
 library(tidyverse)
 library(lubridate)
+
+options(scipen=999)
 ```
 
 
@@ -107,4 +109,54 @@ Notably, passing plays are more common in quarters that end either the half or t
 
 # Numeric Variable Numeric Summaries
 
+Next, let's generate summary statistics for a few numeric variables in the dataset. In particular, let's calculate the mean, median, standard deviation, minimum, and maximum of yards gained during the play (`yards_gained`), score difference (offensive team score less defensive team score, `score_differential`), win probability for the offensive team (`wp`), expected points for the offensive team at the start of each play, expected points added by the play, and win probability added by the play. 
+
+```{r}
+play_data |>
+  summarize(across(c(yards_gained,score_differential,wp,ep,epa,wpa),list(mean= ~mean(.x, na.rm = TRUE),
+                                                                     median= ~median(.x, na.rm = TRUE),
+                                                                     sd= ~sd(.x, na.rm = TRUE),
+                                                                     IQR= ~IQR(.x, na.rm = TRUE),
+                                                                     min= ~min(.x, na.rm = TRUE),
+                                                                     max= ~max(.x, na.rm = TRUE)),.names="{.fn}__{.col}")) |>
+  pivot_longer(everything(),names_to=c(".value","variable"),names_sep="__")
+```
+
+The game in which a single play increased the win probability by 0.94 must have had an exciting ending! I suspect the game ended on a successful Hail Mary. 
+
+Let's explore these summary statistics by quarter to see how things like win probability added change as a game proceeds. 
+
+```{r}
+play_data |>
+  group_by(qtr) |>
+  summarize(across(c(yards_gained,score_differential,wp,ep,epa,wpa),list(mean= ~mean(.x, na.rm = TRUE),
+                                                                     median= ~median(.x, na.rm = TRUE),
+                                                                     sd= ~sd(.x, na.rm = TRUE),
+                                                                     IQR= ~IQR(.x, na.rm = TRUE),
+                                                                     min= ~min(.x, na.rm = TRUE),
+                                                                     max= ~max(.x, na.rm = TRUE)),.names="{.fn}__{.col}")) |>
+  pivot_longer(mean__yards_gained:max__wpa,names_to=c(".value","variable"),names_sep="__") |>
+  arrange(variable,qtr)
+```
+
+I find two phenomena particularly notable: plays in the third quarter had the smallest average impact on win probability, and average yards gain was fairly stable across quarters. 
+
+As a final step in our exploration of summary statistics, let's compare statistics across pass and run plays. 
+
+```{r}
+play_data |>
+  group_by(play_type) |>
+  summarize(across(c(yards_gained,score_differential,wp,ep,epa,wpa),list(mean= ~mean(.x, na.rm = TRUE),
+                                                                     median= ~median(.x, na.rm = TRUE),
+                                                                     sd= ~sd(.x, na.rm = TRUE),
+                                                                     IQR= ~IQR(.x, na.rm = TRUE),
+                                                                     min= ~min(.x, na.rm = TRUE),
+                                                                     max= ~max(.x, na.rm = TRUE)),.names="{.fn}__{.col}")) |>
+  pivot_longer(mean__yards_gained:max__wpa,names_to=c(".value","variable"),names_sep="__") |>
+  arrange(variable,play_type)
+```
+
+The data effectively communicate how teams perceive passes and runs. Specifically, the average win probability added by a run play is roughly a third of the average added by a pass play, but the higher standard deviation in win probability added for pass plays reflects the greater uncertainty of these plays. 
+
+# Graphical Summaries
 
