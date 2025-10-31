@@ -1,2 +1,6 @@
+"0","#Reading in data and filtering to passes and runs in the 2018-2019 season"
 "0","play_data<-read_csv(""NFL Play by Play 2009-2018 (v5).csv"") |>"
 "0","  filter(play_type %in% c(""pass"",""run""),game_date >= ymd(""2018-06-01""))"
+"0",""
+"0","play_data2<-read_csv(""NFL Play by Play 2009-2018 (v5).csv"") |>"
+"0","  filter(game_date >= ymd(""2018-06-01""))"

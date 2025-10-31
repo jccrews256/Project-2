@@ -10,6 +10,7 @@ editor: visual
 ```{r}
 library(tidyverse)
 library(lubridate)
+library(nflplotR)
 
 options(scipen=999)
 ```
@@ -23,6 +24,9 @@ We need to read in the data and do some initial filtering; we will focus our ana
 #Reading in data and filtering to passes and runs in the 2018-2019 season
 play_data<-read_csv("NFL Play by Play 2009-2018 (v5).csv") |>
   filter(play_type %in% c("pass","run"),game_date >= ymd("2018-06-01"))
+
+play_data2<-read_csv("NFL Play by Play 2009-2018 (v5).csv") |>
+  filter(game_date >= ymd("2018-06-01"))
 ```
 # Categorical Variable NUmeric Summaries
 
@@ -160,3 +164,70 @@ The data effectively communicate how teams perceive passes and runs. Specificall
 
 # Graphical Summaries
 
+To begin our visual analysis, let's plot a kernel density of yards gained. 
+
+```{r}
+#Plotting distribution of yards gained per play
+ggplot(data=play_data,aes(x=yards_gained))+geom_density(alpha=0.5,fill="navy")+labs(title="Distribution of Yards Gained per Play",x="Yards Gained",y="Density")
+```
+
+Note the peak at no gain. This likely reflected the common outcome of an incompletion. Let's plot separate kernel densities for each play type (pass and run) to see if we are correct. 
+
+```{r}
+ggplot(data=play_data,aes(x=yards_gained,fill=play_type))+geom_density(alpha=0.5)+labs(title="Distribution of Yards Gained by Play Type",x="Yards Gained",y="Density",fill="Play Type")
+```
+
+When we approximate density functions for each play type, we not only see the high likelihood of an incompletion but also two additional pass-specific modes reflecting sacks and completions. 
+
+Next, we will explore the relationship between yards gained and win probability added via a scatterplot, with point colors varying by quarter. 
+
+```{r}
+ggplot(data=play_data,aes(x=yards_gained,y=wpa))+geom_point(alpha=0.5,color="navy")+
+  labs(title="Scatterplot of Yards Gained vs. Win Probability Added",x="Yards Gained",y="Win Probability Added")
+```
+
+
+Note the positive trend, with most yard-losing plays having a negative impact on win probability and win probability being increasingly positive, on average, as yardage increases. However, there is a lot of variability in win probability added given the yards gained, reflecting differences in the game situation across plays. 
+
+A key artefact of the data: the large number of no-gain plays with major negative win probability impacts is due to the fact that all interceptions are assigned a yardage of 0. 
+
+I suspect the majority of majorly impactful plays occurred in the fourth quarter, so let's generate the same plot for the fourth quarter only. 
+
+```{r}
+ggplot(data=play_data |> filter(qtr==4),aes(x=yards_gained,y=wpa))+geom_point(alpha=0.5,color="navy")+
+  labs(title="Scatterplot of Yards Gained vs. Win Probability Added in the Fourth Quarter",x="Yards Gained",y="Win Probability Added")
+```
+
+
+It seems my hypothesis is correct, as most plays with a win probability impact above 0.5 in absolute value are also present in this plot. 
+
+Let's next explore the balance between run and pass plays for each team. 
+
+```{r, fig.width=8, fig.height=20}
+ggplot(data=play_data,aes(x=play_type,fill=play_type))+geom_bar()+facet_wrap(vars(posteam),ncol=4)+
+  theme_minimal()+
+  theme(
+    plot.title.position = "plot",
+    plot.title = ggplot2::element_text(face = "bold"),
+    axis.title = element_blank(),
+    plot.background = ggplot2::element_rect(fill = "#F0F0F0"),
+    # make wordmarks of team abbreviations
+    strip.text = nflplotR::element_nfl_wordmark(size = 1),
+    # load image from url in caption
+    plot.caption = ggpath::element_path(hjust = 1, size = 0.4)
+  )+labs(title="Run-Pass Breakdown for Each Team",fill=NULL)
+```
+
+It seems the Titans had the most balanced offense in the 2018-2019 season, while the Seahawks were the only team to run more than pass. 
+
+For the final plot, let's visualize each team's win probability across a single game. In particular, let's plot the Eagles win probability across the game in their Week 1 match-up with the Falcons. 
+
+```{r}
+play_data2<-play_data2 |>
+  mutate(play_time=(3600-game_seconds_remaining)/60)
+
+ggplot(data=play_data2 |> filter(game_id==2018090600),aes(x=play_time,y=home_wp,color=home_team))+geom_line(linewidth=1.5,na.rm=TRUE)+scale_color_nfl(type = "primary") + scale_y_continuous(limits=c(0,1))+
+  labs(title="Win Probability for the Eagles in their Week 1 Game Against the Falcons",x="Game Time",y="Eagles Win Percentage")
+```
+
+It seems this was a back-and-forth game until the Eagles took the lead for the final time in the fourth quarter. 
