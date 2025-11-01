@@ -24,7 +24,8 @@ We need to read in the data and do some initial filtering; we will focus our ana
 ```{r}
 #Reading in data and filtering to passes and runs in the 2018-2019 season
 play_data<-read_csv("NFL Play by Play 2009-2018 (v5).csv") |>
-  filter(play_type %in% c("pass","run"),game_date >= ymd("2018-06-01"))
+  filter(play_type %in% c("pass","run"),game_date >= ymd("2018-06-01")) |>
+  select(game_id,game_date,home_team,away_team,posteam,qtr,time,down,ydstogo,yrdln,total_home_score,total_away_score,score_differential,desc,play_type,yards_gained,wp,wpa,fumble_lost,interception)
 
 play_data2<-read_csv("NFL Play by Play 2009-2018 (v5).csv") |>
   filter(game_date >= ymd("2018-06-01")) |>
