@@ -27,13 +27,12 @@ ui <- fluidPage(
           h2("Subset the Data by Offensive Play Type and Team"),
           
           #select run, pass, or both
-          selectInput(
+          pickerInput(
             inputId="run_pass",
             label="Runs, Passes, or Both?",
             choices=c("Run","Pass"),
             selected=c("Run","Pass"),
-            multiple=TRUE,
-            selectize=TRUE
+            multiple=TRUE
           ),
           
           #select a team
@@ -61,9 +60,14 @@ ui <- fluidPage(
             )
           ),
           
-          uiOutput("slider_ui1")
+          uiOutput("variable1_selected"),
           
           
+          uiOutput("variable2_selected"),
+          
+          h2("Done Subsetting? Submit Your Changes!"),
+          
+          actionButton("subset_data","Subset the Data")
         ),
 
         # Show a plot of the generated distribution
@@ -76,17 +80,52 @@ ui <- fluidPage(
 # Define server logic required to draw a histogram
 server <- function(input, output,session) {
 
-  output$slider_ui1<-renderUI({
+  output$variable1_selected<-renderUI({
     req(input$num_var1)
     
     label<-names(num_vars)[num_vars==input$num_var1]
     
-    sliderInput(
+    non_selected_vars<-num_vars[num_vars!=input$num_var1]
+    
+    num_slider<-sliderInput(
       inputId="num_subset1",
       label=paste0("Select a Range for ", label),
       min=min(play_data[[input$num_var1]],na.rm=TRUE),
       max=max(play_data[[input$num_var1]],na.rm=TRUE),
       value=c(min(play_data[[input$num_var1]],na.rm=TRUE),max(play_data[[input$num_var1]],na.rm=TRUE))
+    )
+    
+    num_var2<-pickerInput(
+      inputId = "num_var2",
+      label = "Select another Numeric Variable:",
+      choices = non_selected_vars,
+      selected = NULL,
+      multiple = FALSE,
+      options = list(
+        title = "Select a variable..."
+      )
+    )
+    
+    tagList(
+      num_slider,
+      num_var2
+    )
+  })
+  
+
+  output$variable2_selected<-renderUI({
+    req(input$num_var2)
+    
+    non_selected_vars<-num_vars[num_vars!=input$num_var1]
+    
+    label2<-names(non_selected_vars)[non_selected_vars==input$num_var2]
+    
+    num_slider<-sliderInput(
+      inputId="num_subset2",
+      label=paste0("Select a Range for ", label2),
+      min=min(play_data[[input$num_var2]],na.rm=TRUE),
+      max=max(play_data[[input$num_var2]],na.rm=TRUE),
+      value=c(min(play_data[[input$num_var2]],na.rm=TRUE),max(play_data[[input$num_var2]],na.rm=TRUE))
     )
   })
 
