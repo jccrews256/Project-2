@@ -27,8 +27,16 @@ play_data<-read_csv("NFL Play by Play 2009-2018 (v5).csv") |>
   filter(play_type %in% c("pass","run"),game_date >= ymd("2018-06-01"))
 
 play_data2<-read_csv("NFL Play by Play 2009-2018 (v5).csv") |>
-  filter(game_date >= ymd("2018-06-01"))
+  filter(game_date >= ymd("2018-06-01")) |>
+  select(home_team,away_team,home_wp,away_wp,qtr,time,desc,wp,game_seconds_remaining,game_id)
 ```
+
+```{r}
+write_csv(play_data,"nfl_plays/2018_2019_rp_plays.csv")
+
+write_csv(play_data2,"nfl_plays/2018_2019_all_plays.csv")
+```
+
 # Categorical Variable NUmeric Summaries
 
 For this analysis, we will focus on 

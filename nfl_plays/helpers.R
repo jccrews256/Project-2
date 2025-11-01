@@ -1,0 +1,41 @@
+nfl_teams <- c(
+  "Atlanta Falcons"       = "ATL",
+  "Philadelphia Eagles"   = "PHI",
+  "Baltimore Ravens"      = "BAL",
+  "Buffalo Bills"         = "BUF",
+  "Jacksonville Jaguars"  = "JAX",
+  "New York Giants"       = "NYG",
+  "New Orleans Saints"    = "NO",
+  "Tampa Bay Buccaneers"  = "TB",
+  "New England Patriots"  = "NE",
+  "Houston Texans"        = "HOU",
+  "Minnesota Vikings"     = "MIN",
+  "San Francisco 49ers"   = "SF",
+  "Tennessee Titans"      = "TEN",
+  "Miami Dolphins"        = "MIA",
+  "Cincinnati Bengals"    = "CIN",
+  "Indianapolis Colts"    = "IND",
+  "Pittsburgh Steelers"   = "PIT",
+  "Cleveland Browns"      = "CLE",
+  "Los Angeles Chargers"  = "LAC",
+  "Kansas City Chiefs"    = "KC",
+  "Denver Broncos"        = "DEN",
+  "Seattle Seahawks"      = "SEA",
+  "Dallas Cowboys"        = "DAL",
+  "Carolina Panthers"     = "CAR",
+  "Washington Commanders" = "WAS",
+  "Arizona Cardinals"     = "ARI",
+  "Green Bay Packers"     = "GB",
+  "Chicago Bears"         = "CHI",
+  "New York Jets"         = "NYJ",
+  "Detroit Lions"         = "DET",
+  "Oakland Raiders"       = "OAK",
+  "Los Angeles Rams"      = "LA"
+)
+
+num_vars <- c(
+  "Offense's Win Probability" = "wp",
+  "Win Probability Added on Play" = "wpa",
+  "Score Differential (Offense-Defense)" = "score_differential",
+  "Yards Gained" = "yards_gained"
+)
