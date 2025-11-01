@@ -11,6 +11,7 @@ editor: visual
 library(tidyverse)
 library(lubridate)
 library(nflplotR)
+library(plotly)
 
 options(scipen=999)
 ```
@@ -223,11 +224,28 @@ It seems the Titans had the most balanced offense in the 2018-2019 season, while
 For the final plot, let's visualize each team's win probability across a single game. In particular, let's plot the Eagles win probability across the game in their Week 1 match-up with the Falcons. 
 
 ```{r}
-play_data2<-play_data2 |>
-  mutate(play_time=(3600-game_seconds_remaining)/60)
+play_data_1game<-play_data2 |>
+  filter(game_id == 2018090600) |>
+  drop_na(wp) |>
+  mutate(play_time=(3600-game_seconds_remaining)/60,dummy=1) |>
+  mutate(play_num=cumsum(dummy)) |>
+  select(home_team,away_team,home_wp,away_wp,play_time,play_num,qtr,time,desc) |>
+  mutate(tooltip=paste0("Quarter: ", qtr, 
+                              "<br>Game Clock: ", time,
+                              "<br>Play: ", desc, 
+                              "<br>", home_team, " Win Probability: ", round(home_wp,3),
+                        "<br>",away_team," Win Probability: ", round(away_wp,3)))
 
-ggplot(data=play_data2 |> filter(game_id==2018090600),aes(x=play_time,y=home_wp,color=home_team))+geom_line(linewidth=1.5,na.rm=TRUE)+scale_color_nfl(type = "primary") + scale_y_continuous(limits=c(0,1))+
-  labs(title="Win Probability for the Eagles in their Week 1 Game Against the Falcons",x="Game Time",y="Eagles Win Percentage")
+g<-ggplot(data=play_data_1game,aes(x=play_num,y=home_wp,color=home_team))+geom_line(linewidth=1.5)+scale_color_nfl(type = "primary") + 
+  coord_cartesian(ylim=c(0,1))+
+  geom_point(aes(text = tooltip), alpha = 0, size = 0.01, show.legend = FALSE)+
+  labs(title="Win Probability for the Eagles in their Week 1 Game Against the Falcons",x="Play Number",y="Win Probability")
+
+ggplotly(g,tooltip="text")
 ```
+
+
+
+
 
 It seems this was a back-and-forth game until the Eagles took the lead for the final time in the fourth quarter. 
