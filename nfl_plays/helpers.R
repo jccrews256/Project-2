@@ -35,9 +35,21 @@ nfl_teams<-c(
 
 num_vars<-c(
   "Offense's Win Probability Before Play" = "wp",
-  "Win Probability Added on Play" = "wpa",
-  "Score Differential Before Play (Offense-Defense)" = "score_differential",
+  "Offense's Win Probability Added on Play" = "wpa",
+  "Score Differential Before Play (Offense minus Defense)" = "score_differential",
   "Yards Gained on Play" = "yards_gained"
+)
+
+primary_cat_vars<-c(
+  "Play Type" = "play_type",
+  "Turnover?" = "turnover",
+  "Winning or Tied?" = "winning"
+)
+
+secondary_cat_vars<-c(
+  "Down" = "down",
+  "Quarter" = "qtr",
+  primary_cat_vars
 )
 
 all_vars<-c(
@@ -45,7 +57,7 @@ all_vars<-c(
   "Game Date" = "game_date",
   "Home Team" = "home_team",
   "Away Team" = "away_team",
-  "Team with Position/on Offense" = "posteam",
+  "Team with Possession/on Offense" = "posteam",
   "Quarter" = "qtr",
   "Game Clock" = "time",
   "Down" = "down",
@@ -53,12 +65,14 @@ all_vars<-c(
   "Yardline" = "yrdln",
   "Home Team Score" = "total_home_score",
   "Away Team Score" = "total_away_score",
-  "Score Differential" = "score_differential",
+  "Score Differential Before Play (Offense minus Defense)" = "score_differential",
   "Play Description" = "desc",
   "Play Type" = "play_type",
   "Yards Gained on Play" = "yards_gained",
   "Win Probability Before the Play" = "wp",
   "Win Probability Added on the Play" = "wpa",
   "Fumble Lost on Play?" = "fumble_lost",
-  "Interception on Play?" = "interception"
+  "Interception on Play?" = "interception",
+  "Turnover?" = "turnover",
+  "Winning (or Tied)?" = "winning"
 )
