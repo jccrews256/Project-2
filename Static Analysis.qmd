@@ -124,13 +124,16 @@ Next, let's generate summary statistics for a few numeric variables in the datas
 
 ```{r}
 play_data |>
-  summarize(across(c(yards_gained,score_differential,wp,ep,epa,wpa),list(mean= ~mean(.x, na.rm = TRUE),
-                                                                     median= ~median(.x, na.rm = TRUE),
-                                                                     sd= ~sd(.x, na.rm = TRUE),
-                                                                     IQR= ~IQR(.x, na.rm = TRUE),
-                                                                     min= ~min(.x, na.rm = TRUE),
-                                                                     max= ~max(.x, na.rm = TRUE)),.names="{.fn}__{.col}")) |>
-  pivot_longer(everything(),names_to=c(".value","variable"),names_sep="__")
+  summarize(across(c(yards_gained,score_differential,wp,wpa),list(Mean= ~round(mean(.x, na.rm = TRUE),2),
+                                                                     Median= ~round(median(.x, na.rm = TRUE),2),
+                                                                     SD= ~round(sd(.x, na.rm = TRUE),2),
+                                                                     IQR= ~round(IQR(.x, na.rm = TRUE),2),
+                                                                     Min= ~round(min(.x, na.rm = TRUE),2),
+                                                                     Max= ~round(max(.x, na.rm = TRUE),2)),.names="{.fn}__{.col}")) |>
+  pivot_longer(everything(),names_to=c(".value","variable"),names_sep="__") |>
+  mutate(`Numeric Variable`=names(num_vars)[match(variable,num_vars)]) |>
+  select(!variable) |>
+  select(`Numeric Variable`,everything())
 ```
 
 The game in which a single play increased the win probability by 0.94 must have had an exciting ending! I suspect the game ended on a successful Hail Mary. 
@@ -140,14 +143,18 @@ Let's explore these summary statistics by quarter to see how things like win pro
 ```{r}
 play_data |>
   group_by(qtr) |>
-  summarize(across(c(yards_gained,score_differential,wp,ep,epa,wpa),list(mean= ~mean(.x, na.rm = TRUE),
-                                                                     median= ~median(.x, na.rm = TRUE),
-                                                                     sd= ~sd(.x, na.rm = TRUE),
-                                                                     IQR= ~IQR(.x, na.rm = TRUE),
-                                                                     min= ~min(.x, na.rm = TRUE),
-                                                                     max= ~max(.x, na.rm = TRUE)),.names="{.fn}__{.col}")) |>
-  pivot_longer(mean__yards_gained:max__wpa,names_to=c(".value","variable"),names_sep="__") |>
-  arrange(variable,qtr)
+  summarize(across(c(yards_gained,score_differential,wp,wpa),list(Mean= ~round(mean(.x, na.rm = TRUE),2),
+                                                                     Median= ~round(median(.x, na.rm = TRUE),2),
+                                                                     SD= ~round(sd(.x, na.rm = TRUE),2),
+                                                                     IQR= ~round(IQR(.x, na.rm = TRUE),2),
+                                                                     Min= ~round(min(.x, na.rm = TRUE),2),
+                                                                     Max= ~round(max(.x, na.rm = TRUE),2)),.names="{.fn}__{.col}")) |>
+  pivot_longer(Mean__yards_gained:Max__wpa,names_to=c(".value","variable"),names_sep="__") |>
+  arrange(variable,qtr) |>
+  mutate(`Numeric Variable`=names(num_vars)[match(variable,num_vars)]) |>
+  select(!variable) |>
+  select(qtr,`Numeric Variable`,everything()) |>
+  rename(Quarter=qtr)
 ```
 
 I find two phenomena particularly notable: plays in the third quarter had the smallest average impact on win probability, and average yards gain was fairly stable across quarters. 
@@ -157,12 +164,12 @@ As a final step in our exploration of summary statistics, let's compare statisti
 ```{r}
 play_data |>
   group_by(play_type) |>
-  summarize(across(c(yards_gained,score_differential,wp,ep,epa,wpa),list(mean= ~mean(.x, na.rm = TRUE),
-                                                                     median= ~median(.x, na.rm = TRUE),
-                                                                     sd= ~sd(.x, na.rm = TRUE),
+  summarize(across(c(yards_gained,score_differential,wp,ep,epa,wpa),list(Mean= ~mean(.x, na.rm = TRUE),
+                                                                     Median= ~median(.x, na.rm = TRUE),
+                                                                     SD= ~sd(.x, na.rm = TRUE),
                                                                      IQR= ~IQR(.x, na.rm = TRUE),
-                                                                     min= ~min(.x, na.rm = TRUE),
-                                                                     max= ~max(.x, na.rm = TRUE)),.names="{.fn}__{.col}")) |>
+                                                                     Min= ~min(.x, na.rm = TRUE),
+                                                                     Max= ~max(.x, na.rm = TRUE)),.names="{.fn}__{.col}")) |>
   pivot_longer(mean__yards_gained:max__wpa,names_to=c(".value","variable"),names_sep="__") |>
   arrange(variable,play_type)
 ```

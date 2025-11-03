@@ -52,6 +52,12 @@ secondary_cat_vars<-c(
   primary_cat_vars
 )
 
+grouping_vars<-c(
+  "Play Type" = "play_type",
+  "Down" = "down",
+  "Quarter" = "qtr"
+)
+
 all_vars<-c(
   "Game ID Number" = "game_id",
   "Game Date" = "game_date",
@@ -76,3 +82,41 @@ all_vars<-c(
   "Turnover?" = "turnover",
   "Winning (or Tied)?" = "winning"
 )
+
+no_group_density<-function(data,numvar) {
+  g<-ggplot(data=data,aes(x=!!sym(numvar)))+geom_density(fill="navy",alpha=0.8)+
+    theme_light(base_size = 16, base_family = "Helvetica Neue")+
+    theme(
+      plot.title.position = "plot",
+      plot.title = element_text(face = "bold",color = "#ffffff",size=22),
+      axis.title.y = element_text(face="bold",color = "#ffffff",size = 16),
+      axis.title.x = element_text(face="bold",color = "#ffffff",size = 16),
+      plot.background = element_rect(fill = "#2f2f2f"),
+      panel.background = element_rect(fill = "#2f2f2f"),
+      legend.text = element_text(color="#ffffff",face="bold"),
+      legend.background= element_rect(fill = NA, color = NA),
+      axis.text = element_text(color = "#ffffff", size = 16,face="bold")
+    )+labs(title=paste0("Kernel Density Plot for ",names(num_vars)[num_vars==numvar]),y="Density",x=names(num_vars)[num_vars==numvar])
+  
+  g
+}
+
+grouped_density<-function(data,numvar,groupvar) {
+  colors<-c("navy","darkred","darkgreen","darkorange","darkgrey")
+  colors_subset<-colors[1:length(unique(data[[groupvar]]))]
+  g<-ggplot(data=data,aes(x=!!sym(numvar),fill=!!sym(groupvar)))+geom_density(alpha=0.3)+
+    theme_light(base_size = 16, base_family = "Helvetica Neue")+scale_fill_manual(values=colors_subset)+
+    theme(
+      plot.title.position = "plot",
+      plot.title = element_text(face = "bold",color = "#ffffff",size=22),
+      axis.title.y = element_text(face="bold",color = "#ffffff",size = 16),
+      axis.title.x = element_text(face="bold",color = "#ffffff",size = 16),
+      plot.background = element_rect(fill = "#2f2f2f"),
+      panel.background = element_rect(fill = "#2f2f2f"),
+      legend.text = element_text(color="#ffffff",face="bold"),
+      legend.background= element_rect(fill = NA, color = NA),
+      axis.text = element_text(color = "#ffffff", size = 16,face="bold")
+    )+labs(title=paste0("Kernel Density Plot for ",names(num_vars)[num_vars==numvar]," by ",names(grouping_vars)[grouping_vars==groupvar]),y="Density",x=names(num_vars)[num_vars==numvar],fill=NULL)
+  
+  g
+}

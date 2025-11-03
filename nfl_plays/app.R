@@ -16,12 +16,15 @@ library(gt)
 library(janitor)
 library(gtExtras)
 library(shinycssloaders)
+library(nflplotR)
 
 play_data<-read_csv("2018_2019_rp_plays.csv") |>
   mutate(wp=round(wp,4),wpa=round(wpa,4)) |>
   mutate(turnover=if_else(fumble_lost==1 | interception==1,"yes","no")) |>
   mutate(winning=if_else(score_differential>=0,"yes","no")) |>
-  mutate(qtr=factor(qtr,levels=1:5,labels=c(1:4,"Overtime")))
+  mutate(qtr=factor(qtr,levels=1:5,labels=c(1:4,"Overtime"))) |>
+  drop_na(down) |>
+  mutate(down=factor(down))
 
 source("helpers.R")
 
@@ -33,7 +36,7 @@ ui <- fluidPage(
                    "card-bg" = "#ffffff",
                    "card-border-color" = "#ffffff",
                    "card-color" = "#2f2f2f",
-                   "accordion-bg" = "#ffffff",
+                   "accordion-bg" = "#2f2f2f",
                    "input-bg" = "#ffffff",
                    "navbar-bg" = "#ffffff",
                    "navbar-fg" = "#2f2f2f",
@@ -175,7 +178,7 @@ ui <- fluidPage(
                                                          inputId = "cat_var1",
                                                          label = "Select a Primary Categorical Variable:",
                                                          choices = primary_cat_vars,
-                                                         selected = play_type,
+                                                         selected = "play_type",
                                                          multiple = FALSE
                                                        ),
                                                          pickerInput(
@@ -214,6 +217,56 @@ ui <- fluidPage(
                                        )
                                   )
                                   ),
+                         tabPanel(title=h5("Numeric Variables"),
+                                  card(card_header(h5("Select Your Variables")),
+                                       card_body(
+                                         h6("The Numeric Variables exploration section focuses on the individual and joint empirical distributions of two user-selected numeric variables.
+                                            The user can also select a grouping variable to evaluate the empirical distributions conditional on the value of this variable."),
+                                         layout_columns(
+                                           pickerInput(
+                                             inputId = "num_var_select1",
+                                             label = "Select a Numeric Variable:",
+                                             choices = num_vars,
+                                             selected = "wpa",
+                                             multiple = FALSE
+                                           ),
+                                           pickerInput(
+                                             inputId = "num_var_select2",
+                                             label = "Select another Numeric Variable:",
+                                             choices = num_vars,
+                                             selected = "yards_gained",
+                                             multiple = FALSE
+                                           ),
+                                           pickerInput(
+                                             inputId = "group_var",
+                                             label = "Select a Grouping Variable:",
+                                             choices = grouping_vars,
+                                             selected = character(0),
+                                             multiple = FALSE,
+                                             options = list(
+                                               title = "Select a variable..."
+                                             )
+                                           ),
+                                           col_widths=c(4,4,4)
+                                         ),
+                                         br(),
+                                         br(),
+                                         br(),
+                                         br()
+                                       )
+                                  ),
+                                  card(card_header(h5("Numerical Summaries")),
+                                       card_body(withSpinner(gt_output("num_summs"))
+                                       )
+                                  ),
+                                  card(card_header(h5("Graphical Summaries")),
+                                       card_body(
+                                           withSpinner(plotOutput("density1")),
+                                           withSpinner(plotOutput("density2")),
+                                           withSpinner(plotOutput("scatterplot"))
+                                         )
+                                  )
+                                  )
 
                        ))
               
@@ -313,7 +366,8 @@ server <- function(input, output,session) {
 #Constructing categorical variable summaries
 ################################################################################
 
-#Numeric Summaries##############################################################
+
+  #Updating widgets to ensure validity##########################################
   
   #Updating cat_var2 options based on cat_var1 selection
   observeEvent(list(input$cat_var1,input$subset_data),{
@@ -356,6 +410,8 @@ server <- function(input, output,session) {
     }
   })
 
+  #Numeric Summaries############################################################
+  
   output$cont_tbl<-render_gt({
     if (isTruthy(input$cat_var2)) {
       #Generating cat_var1 breakdown by cat_var2
@@ -427,7 +483,6 @@ server <- function(input, output,session) {
           panel.background = element_rect(fill = "#2f2f2f"),
           legend.position = "none",
           axis.text = element_text(color = "#ffffff", size = 22,face="bold")
-          
         )+labs(title=paste0("Breakdown of Plays by ",names(primary_cat_vars)[primary_cat_vars==input$cat_var1]),y="Number of Plays",fill=NULL)
     }
     
@@ -440,28 +495,187 @@ server <- function(input, output,session) {
   
   output$team_plots<-renderPlot(height=function() {
     rows<-ceiling(length(unique(data_subset$data$posteam))/2)
-    200*rows
+    300*rows
   },{
     req(input$teams_check)
     if (isTruthy(input$cat_var2)) {
       base_plot()+facet_wrap(vars(posteam),ncol=2,axes="all",axis.labels="all")+
         theme(
-          # make wordmarks of team abbreviations
-          strip.text = nflplotR::element_nfl_wordmark(size = 1),
-          # load image from url in caption
-          plot.caption = ggpath::element_path(hjust = 1, size = 0.4)
+          #Add designed team names based on match abbreviations
+          strip.text = nflplotR::element_nfl_wordmark(size = 1)
         )+labs(title=paste0("Team Level: ",names(primary_cat_vars)[primary_cat_vars==input$cat_var1]," by ",names(secondary_cat_vars)[secondary_cat_vars==input$cat_var2]))
     } else {
       base_plot()+facet_wrap(vars(posteam),ncol=2,axes="all",axis.labels="all")+
         theme(
-          # make wordmarks of team abbreviations
-          strip.text = nflplotR::element_nfl_wordmark(size = 1),
-          # load image from url in caption
-          plot.caption = ggpath::element_path(hjust = 1, size = 0.4)
+          #Add designed team names based on matched abbreviations
+          strip.text = nflplotR::element_nfl_wordmark(size = 1)
         )+labs(title=paste0("Team-Level Breakdown of Plays by ",names(primary_cat_vars)[primary_cat_vars==input$cat_var1]))
     }
   })
+  
+  ##############################################################################
+  #Constructing numeric variable summaries
+  ##############################################################################
+  
+  #Updating widgets to ensure validity##########################################
+  
+  #Updating num_var_select2 options based on num_var_select1 selection
+  observeEvent(input$num_var_select1,{
+    choices<-num_vars
+    
+    choices<-choices[-which(num_vars==input$num_var_select1)]
 
+    updatePickerInput(session,
+                      "num_var_select2",
+                      choices=choices,
+                      selected=input$num_var_select2)
+  })
+
+  #Updating num_var_select1 options based on num_var_select2 selection  
+  observeEvent(input$num_var_select2,{
+    choices<-num_vars
+    
+    choices<-choices[-which(num_vars==input$num_var_select2)]
+    
+    updatePickerInput(session,
+                      "num_var_select1",
+                      choices=choices,
+                      selected=input$num_var_select1)
+  })
+  
+  #Updating group_var options based on play_type subset
+  observeEvent(input$subset_data,{
+    choices<-grouping_vars
+    if (length(unique(data_subset$data$play_type))< 2) {
+      choices<-choices[-which(grouping_vars=="play_type")]
+    }
+    if (length(unique(data_subset$data$play_type))< 2 & input$group_var=="play_type") {
+      updatePickerInput(session,
+                        "group_var",
+                        choices=choices,
+                        selected=character(0))
+    } else {
+      updatePickerInput(session,
+                        "group_var",
+                        choices=choices,
+                        selected=input$group_var)
+    }
+
+  })
+  
+  #Numeric Summaries############################################################
+  
+  output$num_summs<-render_gt({
+    if (isTruthy(input$group_var)) {
+      data_subset$data |>
+        group_by(!!sym(input$group_var)) |>
+        summarize(across(c(!!sym(input$num_var_select1),!!sym(input$num_var_select2)),list(Mean= ~round(mean(.x, na.rm = TRUE),4),
+                                                                        Median= ~round(median(.x, na.rm = TRUE),4),
+                                                                        SD= ~round(sd(.x, na.rm = TRUE),4),
+                                                                        IQR= ~round(IQR(.x, na.rm = TRUE),4),
+                                                                        Min= ~round(min(.x, na.rm = TRUE),4),
+                                                                        Max= ~round(max(.x, na.rm = TRUE),4)),.names="{.fn}__{.col}")) |>
+        pivot_longer(2:13,names_to=c(".value","variable"),names_sep="__") |>
+        arrange(variable,!!sym(input$group_var)) |>
+        mutate(`Numeric Variable`=names(num_vars)[match(variable,num_vars)]) |>
+        select(!variable) |>
+        select(!!sym(input$group_var),`Numeric Variable`,everything()) |>
+        rename(!!names(grouping_vars)[grouping_vars==input$group_var]:=!!sym(input$group_var)) |>
+        gt() |>
+        gt_theme_pff() |>
+        tab_options(
+          heading.title.font.size = px(20),
+          table.font.size=px(16),
+          data_row.padding=px(8),
+          heading.padding=px(12),
+          column_labels.padding=px(8)
+        ) |>
+        opt_table_font(google_font(name = "Helvetica Neue")) |>
+        tab_header(title=paste0("Summary Statistics for ",names(num_vars)[num_vars==input$num_var_select1]," and ",names(num_vars)[num_vars==input$num_var_select2]," by ",names(group_vars)[grouping_vars==input$group_var]))
+    } else {
+      data_subset$data |>
+        summarize(across(c(!!sym(input$num_var_select1),!!sym(input$num_var_select2)),list(Mean= ~round(mean(.x, na.rm = TRUE),4),
+                                                                                           Median= ~round(median(.x, na.rm = TRUE),4),
+                                                                                           SD= ~round(sd(.x, na.rm = TRUE),4),
+                                                                                           IQR= ~round(IQR(.x, na.rm = TRUE),4),
+                                                                                           Min= ~round(min(.x, na.rm = TRUE),4),
+                                                                                           Max= ~round(max(.x, na.rm = TRUE),4)),.names="{.fn}__{.col}")) |>
+        pivot_longer(everything(),names_to=c(".value","variable"),names_sep="__") |>
+        mutate(`Numeric Variable`=names(num_vars)[match(variable,num_vars)]) |>
+        select(!variable) |>
+        select(`Numeric Variable`,everything()) |>
+        gt() |>
+        gt_theme_pff() |>
+        tab_options(
+          heading.title.font.size = px(20),
+          table.font.size=px(16),
+          data_row.padding=px(8),
+          heading.padding=px(12),
+          column_labels.padding=px(8)
+        ) |>
+        opt_table_font(google_font(name = "Helvetica Neue")) |>
+        tab_header(title=paste0("Summary Statistics for ",names(num_vars)[num_vars==input$num_var_select1]," and ",names(num_vars)[num_vars==input$num_var_select2]))
+    }
+  })
+  
+  #Graphical Summaries##########################################################
+  
+  output$density1<-renderPlot({
+    if (isTruthy(input$group_var)) {
+      grouped_density(data_subset$data,input$num_var_select1,input$group_var)
+    } else {
+      no_group_density(data_subset$data,input$num_var_select1)
+    }
+  })
+  
+  output$density2<-renderPlot({
+    if (isTruthy(input$group_var)) {
+      grouped_density(data_subset$data,input$num_var_select2,input$group_var)
+    } else {
+      no_group_density(data_subset$data,input$num_var_select2)
+    }
+  })
+  
+  output$scatterplot<-renderPlot({
+    if (isTruthy(input$group_var)) {
+      colors<-c("navy","darkred","darkgreen","darkorange","darkgrey")
+      colors_subset<-colors[1:length(unique(data_subset$data[[input$group_var]]))]
+      g<-ggplot(data=data_subset$data,aes(x=!!sym(input$num_var_select1),y=!!sym(input$num_var_select2),color=!!sym(input$group_var)))+
+        geom_point(alpha=0.3)+
+        theme_light(base_size = 14, base_family = "Helvetica Neue")+scale_color_manual(values=colors_subset)+
+        theme(
+          plot.title.position = "plot",
+          plot.title = element_text(face = "bold",color = "#ffffff",size=22),
+          axis.title.y = element_text(face="bold",color = "#ffffff",size = 16),
+          axis.title.x = element_text(face="bold",color = "#ffffff",size = 16),
+          plot.background = element_rect(fill = "#2f2f2f"),
+          panel.background = element_rect(fill = "#2f2f2f"),
+          legend.text = element_text(color="#ffffff",face="bold"),
+          legend.background= element_rect(fill = NA, color = NA),
+          axis.text = element_text(color = "#ffffff", size = 16,face="bold")
+        )+labs(title=paste0(names(num_vars)[num_vars==input$num_var_select1]," vs. ",names(num_vars)[num_vars==input$num_var_select2]," by ",names(grouping_vars)[grouping_vars==input$group_var]),x=names(num_vars)[num_vars==input$num_var_select1],y=names(num_vars)[num_vars==input$num_var_select2],color=NULL)
+      
+      g
+      } else {
+        g<-ggplot(data=data_subset$data,aes(x=!!sym(input$num_var_select1),y=!!sym(input$num_var_select2)))+
+          geom_point(alpha=0.4,color="navy")+
+          theme_light(base_size = 14, base_family = "Helvetica Neue")+
+          theme(
+            plot.title.position = "plot",
+            plot.title = element_text(face = "bold",color = "#ffffff",size=22),
+            axis.title.y = element_text(face="bold",color = "#ffffff",size = 16),
+            axis.title.x = element_text(face="bold",color = "#ffffff",size = 16),
+            plot.background = element_rect(fill = "#2f2f2f"),
+            panel.background = element_rect(fill = "#2f2f2f"),
+            legend.text = element_text(color="#ffffff",face="bold"),
+            legend.background= element_rect(fill = NA, color = NA),
+            axis.text = element_text(color = "#ffffff", size = 16,face="bold")
+          )+labs(title=paste0(names(num_vars)[num_vars==input$num_var_select1]," vs. ",names(num_vars)[num_vars==input$num_var_select2]),x=names(num_vars)[num_vars==input$num_var_select1],y=names(num_vars)[num_vars==input$num_var_select2],color=NULL)
+        
+        g
+    }
+  })
+  
 }
 
 # Run the application 
