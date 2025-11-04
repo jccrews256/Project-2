@@ -26,6 +26,11 @@ play_data<-read_csv("2018_2019_rp_plays.csv") |>
   drop_na(down) |>
   mutate(down=factor(down))
 
+play_data2<-read_csv("2018_2019_all_plays.csv") |> 
+  mutate(days_in_season=as.numeric(difftime(game_date,ymd("2018-09-04"),units="days"))) |>
+  mutate(week=floor(days_in_season/7)+1) |>
+  mutate(game_label=paste0(away_team," at ",home_team))
+
 source("helpers.R")
 
 # Define UI for application that draws a histogram
@@ -74,7 +79,6 @@ ui <- fluidPage(
             selected=c("run","pass"),
             multiple=TRUE,
             options=pickerOptions(
-              actionsBox=TRUE,
               selectedTextFormat = "count > 1",
               countSelectedText="Both Types Selected")
           ),
@@ -100,7 +104,7 @@ ui <- fluidPage(
           pickerInput(
             inputId = "num_var1",
             label = "Select a Numeric Variable:",
-            choices = num_vars,
+            choices = c("None"="",num_vars),
             selected = character(0),
             multiple = FALSE,
             options = list(
@@ -184,7 +188,7 @@ ui <- fluidPage(
                                                          pickerInput(
                                                            inputId = "cat_var2",
                                                            label = "Select a Grouping Variable:",
-                                                           choices = secondary_cat_vars,
+                                                           choices = c("Not Currently Selected"="",secondary_cat_vars),
                                                            selected = character(0),
                                                            multiple = FALSE,
                                                            options = list(
@@ -240,7 +244,7 @@ ui <- fluidPage(
                                            pickerInput(
                                              inputId = "group_var",
                                              label = "Select a Grouping Variable:",
-                                             choices = grouping_vars,
+                                             choices = c("None"="",grouping_vars),
                                              selected = character(0),
                                              multiple = FALSE,
                                              options = list(
@@ -266,8 +270,40 @@ ui <- fluidPage(
                                            withSpinner(plotOutput("scatterplot"))
                                          )
                                   )
-                                  )
-
+                                  ),
+                         tabPanel(title=h5("A Numeric Side Quest: Win Probability"),
+                                  card(card_header(h5("Pick a Game")),
+                                       card_body(
+                                         h6("The data presented in this subsection are not impacted by data subsetting. Instead, this subsection displays
+                                            win probability across the plays a selected game, with interactive components allowing the user to hover over a point on
+                                            the plot to see a description of the corresponding play. Just select a game to start exploring!"),
+                                         layout_columns(
+                                           pickerInput(
+                                             inputId = "week",
+                                             label = "Select a Game Week:",
+                                             choices = sort(unique(play_data2$week)),
+                                             selected = 1,
+                                             multiple = FALSE,
+                                             options = list(
+                                               container = "body"
+                                             )
+                                           ),
+                                           pickerInput(
+                                             inputId = "matchup",
+                                             label = "Select a Game:",
+                                             choices = NULL,
+                                             selected = NULL,
+                                             multiple = FALSE,
+                                             options = list(
+                                               title = "Select a game...",
+                                               container = "body"
+                                             )
+                                           ),
+                                           col_widths=c(6,6)
+                                         ),
+                                         withSpinner(plotlyOutput("probplot"))
+                                       ))
+                                )
                        ))
               
             )            
@@ -277,7 +313,7 @@ ui <- fluidPage(
     )
 )
 
-# Define server logic required to draw a histogram
+# Defining server logic 
 server <- function(input, output,session) {
 
   output$variable1_selected<-renderUI({
@@ -305,7 +341,7 @@ server <- function(input, output,session) {
     
     updatePickerInput(
       session,inputId = "num_var2",
-      choices = non_selected_vars,
+      choices = c("None"="",non_selected_vars),
       selected = character(0)
     )
   })
@@ -336,18 +372,28 @@ server <- function(input, output,session) {
   
   
   observeEvent(input$subset_data,{
-    data_subset$data<-play_data |>
+    req(length(input$teams)> 0)
+    
+    temp_subset<-play_data |>
       filter(play_type %in% c(input$run_pass),posteam %in% c(input$teams))
     
     if (isTruthy(input$num_var1)) {
-      data_subset$data<-data_subset$data |>
+      temp_subset<-temp_subset |>
         filter(!!sym(input$num_var1)>=input$num_subset1[1],!!sym(input$num_var1)<=input$num_subset1[2])
     }
     
     if (isTruthy(input$num_var2)) {
-      data_subset$data<-data_subset$data |>
+      temp_subset<-temp_subset |>
         filter(!!sym(input$num_var2)>=input$num_subset2[1],!!sym(input$num_var2)<=input$num_subset2[2])
-    }    
+    }
+    
+    if (nrow(temp_subset)==0) {
+      showNotification("Your subset does not contain any data. Please adjust your selections.",type="warning",duration=10)
+    }
+    
+    req(nrow(temp_subset)> 0)
+    
+    data_subset$data<-temp_subset
   })
   
   output$data_table<-renderDataTable(data_subset$data)
@@ -371,7 +417,7 @@ server <- function(input, output,session) {
   
   #Updating cat_var2 options based on cat_var1 selection
   observeEvent(list(input$cat_var1,input$subset_data),{
-    choices<-secondary_cat_vars[-which(secondary_cat_vars==input$cat_var1)]
+    choices<-c("Not Currently Selected"="",secondary_cat_vars[-which(secondary_cat_vars==input$cat_var1)])
     if (length(unique(data_subset$data$play_type))< 2 & input$cat_var1!="play_type") {
       choices<-choices[-which(secondary_cat_vars=="play_type")]
     }
@@ -545,7 +591,7 @@ server <- function(input, output,session) {
   
   #Updating group_var options based on play_type subset
   observeEvent(input$subset_data,{
-    choices<-grouping_vars
+    choices<-c("None"="",grouping_vars)
     if (length(unique(data_subset$data$play_type))< 2) {
       choices<-choices[-which(grouping_vars=="play_type")]
     }
@@ -674,6 +720,64 @@ server <- function(input, output,session) {
         
         g
     }
+  })
+  
+
+  #Win Probability Plot#########################################################
+  
+  observeEvent(input$week,{
+    games<-play_data2 |>
+      filter(week==input$week) |>
+      distinct(game_label) |>
+      pull(game_label)
+    
+    updatePickerInput(
+      session,inputId = "matchup",
+      choices = games,
+      selected = NULL
+    )
+  })
+  
+  output$probplot<-renderPlotly({
+    req(input$matchup)
+    
+    play_data_1game<-play_data2 |>
+      filter(week==input$week,game_label==input$matchup) |>
+      drop_na(wp) |>
+      mutate(dummy=1) |>
+      mutate(play_num=cumsum(dummy)) |>
+      select(home_team,away_team,home_wp,away_wp,play_num,qtr,time,desc) |>
+      mutate(tooltip=paste0("Quarter: ", qtr, 
+                            "<br>Game Clock: ", time,
+                            "<br>Play: ", desc, 
+                            "<br>", home_team, " Win Probability: ", round(home_wp,3),
+                            "<br>",away_team," Win Probability: ", round(away_wp,3)))
+    
+    home<-play_data_1game |>
+      distinct(home_team) |>
+      pull(home_team)
+    
+    away<-play_data_1game |>
+      distinct(away_team) |>
+      pull(away_team)
+    
+    g<-ggplot(data=play_data_1game,aes(x=play_num,y=home_wp,color=home_team))+geom_line(linewidth=1.5,show.legend = FALSE)+scale_color_nfl(type = "primary") + 
+      coord_cartesian(ylim=c(0,1))+
+      geom_point(aes(text = tooltip), alpha = 0, size = 0.01, show.legend = FALSE)+
+      theme_light(base_size = 14, base_family = "Helvetica Neue")+
+      theme(
+        plot.title.position = "plot",
+        plot.title = element_text(face = "bold",color = "#ffffff",size=18),
+        axis.title.y = element_text(face="bold",color = "#ffffff",size = 16),
+        axis.title.x = element_text(face="bold",color = "#ffffff",size = 16),
+        plot.background = element_rect(fill = "#2f2f2f"),
+        panel.background = element_rect(fill = "#2f2f2f"),
+        legend.position = "none",
+        axis.text = element_text(color = "#ffffff", size = 16,face="bold")
+      )+
+      labs(title=paste0("Win Probability for the ",names(nfl_teams)[nfl_teams==home]," in their Week ",input$week," Game Against the ",names(nfl_teams)[nfl_teams==away]),x="Play Number",y="Win Probability")
+    
+    ggplotly(g,tooltip="text")
   })
   
 }

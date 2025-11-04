@@ -31,7 +31,7 @@ play_data<-read_csv("NFL Play by Play 2009-2018 (v5).csv") |>
 
 play_data2<-read_csv("NFL Play by Play 2009-2018 (v5).csv") |>
   filter(game_date >= ymd("2018-06-01")) |>
-  select(home_team,away_team,home_wp,away_wp,qtr,time,desc,wp,game_seconds_remaining,game_id)
+  select(home_team,away_team,home_wp,away_wp,qtr,time,desc,wp,game_seconds_remaining,game_id,game_date)
 ```
 
 ```{r}
@@ -39,6 +39,14 @@ write_csv(play_data,"nfl_plays/2018_2019_rp_plays.csv")
 
 write_csv(play_data2,"nfl_plays/2018_2019_all_plays.csv")
 ```
+
+```{r}
+play_data2<-play_data2 |>
+  mutate(days_in_season=as.numeric(difftime(game_date,ymd("2018-09-04"),units="days"))) |>
+  mutate(week=floor(days_in_season/7)+1) |>
+  mutate(game_label=paste0(away_team," at ",home_team))
+```
+
 
 # Categorical Variable NUmeric Summaries
 
