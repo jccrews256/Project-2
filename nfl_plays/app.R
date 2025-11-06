@@ -336,7 +336,7 @@ ui <- fluidPage(
                                        card_body(
                                            withSpinner(plotOutput("density1")),
                                            withSpinner(plotOutput("density2")),
-                                           withSpinner(plotOutput("scatterplot"))
+                                           withSpinner(plotOutput("scatterplot",height="600px"))
                                          )
                                   )
                                   ),
@@ -543,10 +543,17 @@ server <- function(input, output,session) {
     if (length(unique(data_subset$data$play_type))< 2) {
       choices<-choices[-which(choices=="play_type")]
       
-      updatePickerInput(session,
-                        "cat_var1",
-                        choices=choices,
-                        selected=NULL)
+      if (input$cat_var1=="play_type") {
+        updatePickerInput(session,
+                          "cat_var1",
+                          choices=choices,
+                          selected=NULL)
+      } else {
+        updatePickerInput(session,
+                          "cat_var1",
+                          choices=choices,
+                          selected=input$cat_var1)
+      }
     } else {
       updatePickerInput(session,
                         "cat_var1",
@@ -780,8 +787,8 @@ server <- function(input, output,session) {
         gt_theme_pff() |>
         #Applying custom format options
         tab_options(
-          heading.title.font.size = px(20),
-          table.font.size=px(16),
+          heading.title.font.size = px(16),
+          table.font.size=px(14),
           data_row.padding=px(8),
           heading.padding=px(12),
           column_labels.padding=px(8)
@@ -790,7 +797,7 @@ server <- function(input, output,session) {
         opt_table_font(google_font(name = "Helvetica Neue")) |>
         #Assigning a title
         tab_header(title=paste0("Summary Statistics for ",names(num_vars)[num_vars==input$num_var_select1]," and ",
-                                names(num_vars)[num_vars==input$num_var_select2]," by ",names(group_vars)[grouping_vars==input$group_var]))
+                                names(num_vars)[num_vars==input$num_var_select2]," by ",names(grouping_vars)[grouping_vars==input$group_var]))
       #Constructing table when no grouping variable selected
     } else {
       data_subset$data |>
@@ -812,8 +819,8 @@ server <- function(input, output,session) {
         gt_theme_pff() |>
         #Applying custom format options
         tab_options(
-          heading.title.font.size = px(20),
-          table.font.size=px(16),
+          heading.title.font.size = px(16),
+          table.font.size=px(14),
           data_row.padding=px(8),
           heading.padding=px(12),
           column_labels.padding=px(8)
@@ -860,11 +867,11 @@ server <- function(input, output,session) {
       #Constructing scatterplot with point colors varying by group
       g<-ggplot(data=data_subset$data,aes(x=!!sym(input$num_var_select1),y=!!sym(input$num_var_select2),color=!!sym(input$group_var)))+
         geom_point(alpha=0.3)+
-        theme_light(base_size = 14, base_family = "Helvetica Neue")+scale_color_manual(values=colors_subset)+
+        theme_light(base_size = 16, base_family = "Helvetica Neue")+scale_color_manual(values=colors_subset)+
         #Applying custom theming
         theme(
           plot.title.position = "plot",
-          plot.title = element_text(face = "bold",color = "#ffffff",size=22),
+          plot.title = element_text(face = "bold",color = "#ffffff",size=19),
           axis.title.y = element_text(face="bold",color = "#ffffff",size = 16),
           axis.title.x = element_text(face="bold",color = "#ffffff",size = 16),
           plot.background = element_rect(fill = "#2f2f2f"),
@@ -882,11 +889,11 @@ server <- function(input, output,session) {
         #Constructing the basic scatterplot
         g<-ggplot(data=data_subset$data,aes(x=!!sym(input$num_var_select1),y=!!sym(input$num_var_select2)))+
           geom_point(alpha=0.4,color="navy")+
-          theme_light(base_size = 14, base_family = "Helvetica Neue")+
+          theme_light(base_size = 16, base_family = "Helvetica Neue")+
           #Adding custom theming
           theme(
             plot.title.position = "plot",
-            plot.title = element_text(face = "bold",color = "#ffffff",size=22),
+            plot.title = element_text(face = "bold",color = "#ffffff",size=19),
             axis.title.y = element_text(face="bold",color = "#ffffff",size = 16),
             axis.title.x = element_text(face="bold",color = "#ffffff",size = 16),
             plot.background = element_rect(fill = "#2f2f2f"),

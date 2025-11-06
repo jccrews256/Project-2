@@ -96,7 +96,7 @@ no_group_density<-function(data,numvar) {
     #Applying custom theming
     theme(
       plot.title.position = "plot",
-      plot.title = element_text(face = "bold",color = "#ffffff",size=22),
+      plot.title = element_text(face = "bold",color = "#ffffff",size=19),
       axis.title.y = element_text(face="bold",color = "#ffffff",size = 16),
       axis.title.x = element_text(face="bold",color = "#ffffff",size = 16),
       plot.background = element_rect(fill = "#2f2f2f"),
@@ -118,7 +118,7 @@ grouped_density<-function(data,numvar,groupvar) {
     #Applying custom theming
     theme(
       plot.title.position = "plot",
-      plot.title = element_text(face = "bold",color = "#ffffff",size=22),
+      plot.title = element_text(face = "bold",color = "#ffffff",size=19),
       axis.title.y = element_text(face="bold",color = "#ffffff",size = 16),
       axis.title.x = element_text(face="bold",color = "#ffffff",size = 16),
       plot.background = element_rect(fill = "#2f2f2f"),
