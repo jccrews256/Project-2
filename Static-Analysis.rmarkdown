@@ -5,7 +5,11 @@ format: html
 editor: visual
 ---
 
+
+
 # Loading Packages
+
+
 
 ```{r}
 library(tidyverse)
@@ -21,7 +25,11 @@ source("nfl_plays/helpers.R")
 ```
 
 
+
+
 # Reading in Data
+
+
 
 ```{r}
 #Reading in main dataset
@@ -35,11 +43,15 @@ play_data2<-read_csv("nfl_plays/2018_2019_all_plays.csv") |>
 ```
 
 
+
+
 # Categorical Variable NUmeric Summaries
 
 For this analysis, we will focus on 
 
 As an initial step, let's explore the distribution between passes and runs.
+
+
 
 ```{r}
 #Generating pass-run breakdown
@@ -55,9 +67,13 @@ gt(table1) |>
   )
 ```
 
+
+
 Thus, 59.4% of plays in the 2018-2019 season were pass plays. 
 
 Which type of play was more likely to result in a turnover? 
+
+
 
 ```{r}
 #Generating turnover rates by play type
@@ -76,9 +92,13 @@ gt(table2) |>
   tab_spanner(label="Turnover?",columns=2:length(table2))
 ```
 
+
+
 It seems pass plays are much more likely to result in turnovers. 
 
 How does the pass-run breakdown differ when a team is winning (or tied) and when it is losing? 
+
+
 
 ```{r}
 #Generating pass-run breakdown for winning (or tied) and losing
@@ -98,10 +118,14 @@ gt(table3) |>
 ```
 
 
+
+
 Not surprisingly, teams are more likely to pass when they are losing than when they are winning. 
 
 
 How does the run-pass breakdown vary across quarters? 
+
+
 
 ```{r}
 #Generating pass-run breakdown by quarter
@@ -120,12 +144,16 @@ gt(table4) |>
   tab_spanner(label="Play Type",columns=2:length(table2))
 ```
 
+
+
 Notably, passing plays are more common in quarters that end either the half or the game. This may indicate that coaches feel a greater sense of urgency near the end of the half/game. 
 
 
 # Numeric Variable Numeric Summaries
 
 Next, let's generate summary statistics for a few numeric variables in the dataset. In particular, let's calculate the mean, median, standard deviation, minimum, and maximum of yards gained during the play (`yards_gained`), score difference (offensive team score less defensive team score, `score_differential`), win probability for the offensive team (`wp`), expected points for the offensive team at the start of each play, expected points added by the play, and win probability added by the play. 
+
+
 
 ```{r}
 #Generating overall summary statistics for numeric variables of interest
@@ -144,9 +172,13 @@ play_data |>
   select(`Numeric Variable`,everything())
 ```
 
+
+
 The game in which a single play increased the win probability by 0.94 must have had an exciting ending! I suspect the game ended on a successful Hail Mary. 
 
 Let's explore these summary statistics by quarter to see how things like win probability added change as a game proceeds. 
+
+
 
 ```{r}
 #Generating summary statistics for numeric variables of interest by quarter
@@ -171,6 +203,8 @@ play_data |>
   rename(Quarter=qtr)
 ```
 
+
+
 I find two phenomena particularly notable: plays in the third quarter had the smallest average impact on win probability, and average yards gain was fairly stable across quarters. 
 
 
@@ -178,21 +212,31 @@ I find two phenomena particularly notable: plays in the third quarter had the sm
 
 To begin our visual analysis, let's plot a kernel density of yards gained. 
 
+
+
 ```{r}
 #Plotting distribution of yards gained per play
 ggplot(data=play_data,aes(x=yards_gained))+geom_density(alpha=0.5,fill="navy")+labs(title="Distribution of Yards Gained per Play",x="Yards Gained",y="Density")
 ```
 
+
+
 Note the peak at no gain. This likely reflected the common outcome of an incompletion. Let's plot separate kernel densities for each play type (pass and run) to see if we are correct. 
+
+
 
 ```{r}
 #Plotting distribution of yards gained per play by play type
 ggplot(data=play_data,aes(x=yards_gained,fill=play_type))+geom_density(alpha=0.5)+scale_fill_manual(values=c("navy","darkred"))+labs(title="Distribution of Yards Gained by Play Type",x="Yards Gained",y="Density",fill="Play Type")
 ```
 
+
+
 When we approximate density functions for each play type, we not only see the high likelihood of an incompletion but also two additional pass-specific modes reflecting sacks and completions. 
 
 Next, we will explore the relationship between yards gained and win probability added via a scatterplot, with point colors varying by quarter. 
+
+
 
 ```{r}
 #Generating scatterplot comparing yards gained to win probability added on the play
@@ -201,11 +245,15 @@ ggplot(data=play_data,aes(x=yards_gained,y=wpa))+geom_point(alpha=0.5,color="nav
 ```
 
 
+
+
 Note the positive trend, with most yard-losing plays having a negative impact on win probability and win probability being increasingly positive, on average, as yardage increases. However, there is a lot of variability in win probability added given the yards gained, reflecting differences in the game situation across plays. 
 
 A key artefact of the data: the large number of no-gain plays with major negative win probability impacts is due to the fact that all interceptions are assigned a yardage of 0. 
 
 I suspect the majority of majorly impactful plays occurred in the fourth quarter, so let's generate the same plot with the points segmented by quarter. 
+
+
 
 ```{r}
 #Generating scatterplot comparing yards gained to win probability added on the play
@@ -216,9 +264,13 @@ ggplot(data=play_data |> mutate(qtr=factor(qtr,levels=1:5,labels=c(1:4,"Overtime
 ```
 
 
+
+
 It seems my hypothesis is correct, as most plays with a win probability impact above 0.5 in absolute value are in the fourth quarter (orange). 
 
 Let's next explore the balance between run and pass plays for each team. 
+
+
 
 ```{r, fig.width=8, fig.height=20}
 #Plotting run-pass breakdown using faceting to produce a plot for each team
@@ -234,9 +286,13 @@ ggplot(data=play_data,aes(x=play_type,fill=play_type))+geom_bar(alpha=0.8)+facet
   )+labs(title="Run-Pass Breakdown for Each Team",y="Number of Plays",fill=NULL)
 ```
 
+
+
 It seems the Titans had the most balanced offense in the 2018-2019 season, while the Seahawks were the only team to run more than pass. 
 
 For the final plot, let's visualize each team's win probability across a single game. In particular, let's plot the Eagles win probability across the game in their Week 1 match-up with the Falcons. 
+
+
 
 ```{r}
 #Filtering to a single game and generating tooltip info
@@ -265,6 +321,8 @@ g<-ggplot(data=play_data_1game,aes(x=play_num,y=home_wp,color=home_team))+geom_l
 #Converting to dynamic plotly with tooltips
 ggplotly(g,tooltip="text")
 ```
+
+
 
 
 
