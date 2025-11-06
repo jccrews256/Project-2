@@ -1,3 +1,4 @@
+#Vector of team abbreviations with corresponding full names
 nfl_teams<-c(
   "Atlanta Falcons" = "ATL",
   "Philadelphia Eagles" = "PHI",
@@ -33,6 +34,7 @@ nfl_teams<-c(
   "Los Angeles Rams" = "LA"
 )
 
+#Vector of numeric variables with corresponding assigned labels
 num_vars<-c(
   "Offense's Win Probability Before Play" = "wp",
   "Offense's Win Probability Added on Play" = "wpa",
@@ -40,24 +42,28 @@ num_vars<-c(
   "Yards Gained on Play" = "yards_gained"
 )
 
+#Vector of primary categorical variables with corresponding assigned labels
 primary_cat_vars<-c(
   "Play Type" = "play_type",
   "Turnover?" = "turnover",
   "Winning or Tied?" = "winning"
 )
 
+#Vector of secondary (grouping) categorical variables with corresponding assigned labels
 secondary_cat_vars<-c(
   "Down" = "down",
   "Quarter" = "qtr",
   primary_cat_vars
 )
 
+#Vector of grouping variables with corresponding assigned labels
 grouping_vars<-c(
   "Play Type" = "play_type",
   "Down" = "down",
   "Quarter" = "qtr"
 )
 
+#Vector of all variables in main dataset wtih corresponding assigned labels
 all_vars<-c(
   "Game ID Number" = "game_id",
   "Game Date" = "game_date",
@@ -83,9 +89,11 @@ all_vars<-c(
   "Winning (or Tied)?" = "winning"
 )
 
+#Function generating kernel density plot with no grouping variable
 no_group_density<-function(data,numvar) {
   g<-ggplot(data=data,aes(x=!!sym(numvar)))+geom_density(fill="navy",alpha=0.8)+
     theme_light(base_size = 16, base_family = "Helvetica Neue")+
+    #Applying custom theming
     theme(
       plot.title.position = "plot",
       plot.title = element_text(face = "bold",color = "#ffffff",size=22),
@@ -101,11 +109,13 @@ no_group_density<-function(data,numvar) {
   g
 }
 
+#Function generating kernel density plot WITH grouping variable
 grouped_density<-function(data,numvar,groupvar) {
   colors<-c("navy","darkred","darkgreen","darkorange","darkgrey")
   colors_subset<-colors[1:length(unique(data[[groupvar]]))]
   g<-ggplot(data=data,aes(x=!!sym(numvar),fill=!!sym(groupvar)))+geom_density(alpha=0.3)+
     theme_light(base_size = 16, base_family = "Helvetica Neue")+scale_fill_manual(values=colors_subset)+
+    #Applying custom theming
     theme(
       plot.title.position = "plot",
       plot.title = element_text(face = "bold",color = "#ffffff",size=22),

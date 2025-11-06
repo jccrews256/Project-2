@@ -21,27 +21,12 @@ options(scipen=999)
 
 # Reading in Data
 
-We need to read in the data and do some initial filtering; we will focus our analysis on only run and pass plays in the 2018-2019 season. 
-
 ```{r}
-#Reading in data and filtering to passes and runs in the 2018-2019 season
-play_data<-read_csv("NFL Play by Play 2009-2018 (v5).csv") |>
-  filter(play_type %in% c("pass","run"),game_date >= ymd("2018-06-01")) |>
-  select(game_id,game_date,home_team,away_team,posteam,qtr,time,down,ydstogo,yrdln,total_home_score,total_away_score,score_differential,desc,play_type,yards_gained,wp,wpa,fumble_lost,interception)
+#Reading in main dataset
+play_data<-read_csv("nfl_plays/2018_2019_rp_plays.csv")
 
-play_data2<-read_csv("NFL Play by Play 2009-2018 (v5).csv") |>
-  filter(game_date >= ymd("2018-06-01")) |>
-  select(home_team,away_team,home_wp,away_wp,qtr,time,desc,wp,game_seconds_remaining,game_id,game_date)
-```
-
-```{r}
-write_csv(play_data,"nfl_plays/2018_2019_rp_plays.csv")
-
-write_csv(play_data2,"nfl_plays/2018_2019_all_plays.csv")
-```
-
-```{r}
-play_data2<-play_data2 |>
+#Reading in secondary dataset for win probability time series and creating needed variables
+play_data2<-read_csv("nfl_plays/2018_2019_all_plays.csv") |>
   mutate(days_in_season=as.numeric(difftime(game_date,ymd("2018-09-04"),units="days"))) |>
   mutate(week=floor(days_in_season/7)+1) |>
   mutate(game_label=paste0(away_team," at ",home_team))
@@ -57,9 +42,11 @@ As an initial step, let's explore the distribution between passes and runs.
 ```{r}
 #Generating pass-run breakdown
 table1<-play_data |>
+  #Generating contingency table
   tabyl(play_type,show_na=FALSE) |>
   adorn_pct_formatting(digits=1)
 
+#Converting to HTML table with clean labels
 gt(table1) |>
   cols_label(
     play_type="Play Type",n="Number of Plays",percent="Percent of Plays"
@@ -75,11 +62,13 @@ Which type of play was more likely to result in a turnover?
 table2<-play_data |>
   #Identifying turnovers as lost fumbles and interceptions
   mutate(turnover=if_else(fumble_lost==1 | interception==1,"yes","no")) |>
+  #Converting to contingency table with row percentages
   tabyl(play_type,turnover,show_na=FALSE) |>
   adorn_percentages("row") |>
   adorn_pct_formatting(digits=1) |>
   adorn_ns("front")
 
+#Converting to HTML table with clean labels
 gt(table2) |>
   cols_label(play_type="Play Type") |>
   tab_spanner(label="Turnover?",columns=2:length(table2))
@@ -92,12 +81,15 @@ How does the pass-run breakdown differ when a team is winning (or tied) and when
 ```{r}
 #Generating pass-run breakdown for winning (or tied) and losing
 table3<-play_data |>
+  #Creating winning indicator
   mutate(winning=if_else(score_differential>=0,"yes","no")) |>
+  #Converting to contingency table with row percentages
   tabyl(winning,play_type,show_na=FALSE) |>
   adorn_percentages("row") |>
   adorn_pct_formatting(digits=1) |>
   adorn_ns("front")
 
+#Converting to HTML table with clean labels
 gt(table3) |>
   cols_label(winning="Winning or Tied?") |>
   tab_spanner(label="Play Type",columns=2:length(table2))
@@ -112,12 +104,15 @@ How does the run-pass breakdown vary across quarters?
 ```{r}
 #Generating pass-run breakdown by quarter
 table4<-play_data |>
+  #Converting quarter to factor
   mutate(qtr=factor(qtr,levels=1:5,labels=c(1:4,"Overtime"))) |>
+  #Generating contingency table with row percentages
   tabyl(qtr,play_type,show_na=FALSE) |>
   adorn_percentages("row") |>
   adorn_pct_formatting(digits=1) |>
   adorn_ns("front")
 
+#Converting to HTML table with clean labels
 gt(table4) |>
   cols_label(qtr="Quarter") |>
   tab_spanner(label="Play Type",columns=2:length(table2))
@@ -131,14 +126,17 @@ Notably, passing plays are more common in quarters that end either the half or t
 Next, let's generate summary statistics for a few numeric variables in the dataset. In particular, let's calculate the mean, median, standard deviation, minimum, and maximum of yards gained during the play (`yards_gained`), score difference (offensive team score less defensive team score, `score_differential`), win probability for the offensive team (`wp`), expected points for the offensive team at the start of each play, expected points added by the play, and win probability added by the play. 
 
 ```{r}
+#Generating overall summary statistics for numeric variables of interest
 play_data |>
-  summarize(across(c(yards_gained,score_differential,wp,wpa),list(Mean= ~round(mean(.x, na.rm = TRUE),2),
-                                                                     Median= ~round(median(.x, na.rm = TRUE),2),
-                                                                     SD= ~round(sd(.x, na.rm = TRUE),2),
-                                                                     IQR= ~round(IQR(.x, na.rm = TRUE),2),
-                                                                     Min= ~round(min(.x, na.rm = TRUE),2),
-                                                                     Max= ~round(max(.x, na.rm = TRUE),2)),.names="{.fn}__{.col}")) |>
+  #Generating mean, median, sd, IQR, min, and max
+  summarize(across(c(yards_gained,score_differential,wp,wpa),list(Mean= ~round(mean(.x, na.rm = TRUE),4),
+                                                                     Median= ~round(median(.x, na.rm = TRUE),4),
+                                                                     SD= ~round(sd(.x, na.rm = TRUE),4),
+                                                                     IQR= ~round(IQR(.x, na.rm = TRUE),4),
+                                                                     Min= ~round(min(.x, na.rm = TRUE),4),
+                                                                     Max= ~round(max(.x, na.rm = TRUE),4)),.names="{.fn}__{.col}")) |>
   pivot_longer(everything(),names_to=c(".value","variable"),names_sep="__") |>
+  #Assigning clean variable name labels
   mutate(`Numeric Variable`=names(num_vars)[match(variable,num_vars)]) |>
   select(!variable) |>
   select(`Numeric Variable`,everything())
@@ -149,16 +147,22 @@ The game in which a single play increased the win probability by 0.94 must have 
 Let's explore these summary statistics by quarter to see how things like win probability added change as a game proceeds. 
 
 ```{r}
+#Generating summary statistics for numeric variables of interest by quarter
 play_data |>
+  #Converting quarter to factor
+  mutate(qtr=factor(qtr,levels=1:5,labels=c(1:4,"Overtime"))) |>
+  #Grouping by quarter
   group_by(qtr) |>
-  summarize(across(c(yards_gained,score_differential,wp,wpa),list(Mean= ~round(mean(.x, na.rm = TRUE),2),
-                                                                     Median= ~round(median(.x, na.rm = TRUE),2),
-                                                                     SD= ~round(sd(.x, na.rm = TRUE),2),
-                                                                     IQR= ~round(IQR(.x, na.rm = TRUE),2),
-                                                                     Min= ~round(min(.x, na.rm = TRUE),2),
-                                                                     Max= ~round(max(.x, na.rm = TRUE),2)),.names="{.fn}__{.col}")) |>
+  #Generating mean, median, sd, IQR, min, and max
+  summarize(across(c(yards_gained,score_differential,wp,wpa),list(Mean= ~round(mean(.x, na.rm = TRUE),4),
+                                                                     Median= ~round(median(.x, na.rm = TRUE),4),
+                                                                     SD= ~round(sd(.x, na.rm = TRUE),4),
+                                                                     IQR= ~round(IQR(.x, na.rm = TRUE),4),
+                                                                     Min= ~round(min(.x, na.rm = TRUE),4),
+                                                                     Max= ~round(max(.x, na.rm = TRUE),4)),.names="{.fn}__{.col}")) |>
   pivot_longer(Mean__yards_gained:Max__wpa,names_to=c(".value","variable"),names_sep="__") |>
   arrange(variable,qtr) |>
+  #Assigning clean variable name labels
   mutate(`Numeric Variable`=names(num_vars)[match(variable,num_vars)]) |>
   select(!variable) |>
   select(qtr,`Numeric Variable`,everything()) |>
@@ -167,22 +171,6 @@ play_data |>
 
 I find two phenomena particularly notable: plays in the third quarter had the smallest average impact on win probability, and average yards gain was fairly stable across quarters. 
 
-As a final step in our exploration of summary statistics, let's compare statistics across pass and run plays. 
-
-```{r}
-play_data |>
-  group_by(play_type) |>
-  summarize(across(c(yards_gained,score_differential,wp,ep,epa,wpa),list(Mean= ~mean(.x, na.rm = TRUE),
-                                                                     Median= ~median(.x, na.rm = TRUE),
-                                                                     SD= ~sd(.x, na.rm = TRUE),
-                                                                     IQR= ~IQR(.x, na.rm = TRUE),
-                                                                     Min= ~min(.x, na.rm = TRUE),
-                                                                     Max= ~max(.x, na.rm = TRUE)),.names="{.fn}__{.col}")) |>
-  pivot_longer(mean__yards_gained:max__wpa,names_to=c(".value","variable"),names_sep="__") |>
-  arrange(variable,play_type)
-```
-
-The data effectively communicate how teams perceive passes and runs. Specifically, the average win probability added by a run play is roughly a third of the average added by a pass play, but the higher standard deviation in win probability added for pass plays reflects the greater uncertainty of these plays. 
 
 # Graphical Summaries
 
@@ -196,7 +184,8 @@ ggplot(data=play_data,aes(x=yards_gained))+geom_density(alpha=0.5,fill="navy")+l
 Note the peak at no gain. This likely reflected the common outcome of an incompletion. Let's plot separate kernel densities for each play type (pass and run) to see if we are correct. 
 
 ```{r}
-ggplot(data=play_data,aes(x=yards_gained,fill=play_type))+geom_density(alpha=0.5)+labs(title="Distribution of Yards Gained by Play Type",x="Yards Gained",y="Density",fill="Play Type")
+#Plotting distribution of yards gained per play by play type
+ggplot(data=play_data,aes(x=yards_gained,fill=play_type))+geom_density(alpha=0.5)+scale_fill_manual(values=c("navy","darkred"))+labs(title="Distribution of Yards Gained by Play Type",x="Yards Gained",y="Density",fill="Play Type")
 ```
 
 When we approximate density functions for each play type, we not only see the high likelihood of an incompletion but also two additional pass-specific modes reflecting sacks and completions. 
@@ -204,6 +193,7 @@ When we approximate density functions for each play type, we not only see the hi
 Next, we will explore the relationship between yards gained and win probability added via a scatterplot, with point colors varying by quarter. 
 
 ```{r}
+#Generating scatterplot comparing yards gained to win probability added on the play
 ggplot(data=play_data,aes(x=yards_gained,y=wpa))+geom_point(alpha=0.5,color="navy")+
   labs(title="Scatterplot of Yards Gained vs. Win Probability Added",x="Yards Gained",y="Win Probability Added")
 ```
@@ -213,31 +203,33 @@ Note the positive trend, with most yard-losing plays having a negative impact on
 
 A key artefact of the data: the large number of no-gain plays with major negative win probability impacts is due to the fact that all interceptions are assigned a yardage of 0. 
 
-I suspect the majority of majorly impactful plays occurred in the fourth quarter, so let's generate the same plot for the fourth quarter only. 
+I suspect the majority of majorly impactful plays occurred in the fourth quarter, so let's generate the same plot with the points segmented by quarter. 
 
 ```{r}
-ggplot(data=play_data |> filter(qtr==4),aes(x=yards_gained,y=wpa))+geom_point(alpha=0.5,color="navy")+
-  labs(title="Scatterplot of Yards Gained vs. Win Probability Added in the Fourth Quarter",x="Yards Gained",y="Win Probability Added")
+#Generating scatterplot comparing yards gained to win probability added on the play
+#with colors indicating the quarter the play occurred in
+ggplot(data=play_data |> mutate(qtr=factor(qtr,levels=1:5,labels=c(1:4,"Overtime"))),aes(x=yards_gained,y=wpa,color=qtr))+geom_point(alpha=0.3)+
+  scale_color_manual(values=c("navy","darkred","darkgreen","darkorange","darkgrey"))+
+  labs(title="Scatterplot of Yards Gained vs. Win Probability Added by Quarter",x="Yards Gained",y="Win Probability Added",color=NULL)
 ```
 
 
-It seems my hypothesis is correct, as most plays with a win probability impact above 0.5 in absolute value are also present in this plot. 
+It seems my hypothesis is correct, as most plays with a win probability impact above 0.5 in absolute value are in the fourth quarter (orange). 
 
 Let's next explore the balance between run and pass plays for each team. 
 
 ```{r, fig.width=8, fig.height=20}
-ggplot(data=play_data,aes(x=play_type,fill=play_type))+geom_bar()+facet_wrap(vars(posteam),ncol=4)+
-  theme_minimal()+
+#Plotting run-pass breakdown using faceting to produce a plot for each team
+ggplot(data=play_data,aes(x=play_type,fill=play_type))+geom_bar(alpha=0.8)+facet_wrap(vars(posteam),ncol=4,axes="all",axis.labels="all")+
+  scale_fill_manual(values=c("navy","darkred"))+theme_minimal()+
+  #Testing some custom theming
   theme(
     plot.title.position = "plot",
-    plot.title = ggplot2::element_text(face = "bold"),
-    axis.title = element_blank(),
-    plot.background = ggplot2::element_rect(fill = "#F0F0F0"),
-    # make wordmarks of team abbreviations
-    strip.text = nflplotR::element_nfl_wordmark(size = 1),
-    # load image from url in caption
-    plot.caption = ggpath::element_path(hjust = 1, size = 0.4)
-  )+labs(title="Run-Pass Breakdown for Each Team",fill=NULL)
+    plot.title = element_text(face = "bold"),
+    plot.background = element_rect(fill = "#F0F0F0"),
+    #Add team name images for each plot based on team abbreviations
+    strip.text = element_nfl_wordmark(size = 1),
+  )+labs(title="Run-Pass Breakdown for Each Team",y="Number of Plays",fill=NULL)
 ```
 
 It seems the Titans had the most balanced offense in the 2018-2019 season, while the Seahawks were the only team to run more than pass. 
@@ -245,23 +237,30 @@ It seems the Titans had the most balanced offense in the 2018-2019 season, while
 For the final plot, let's visualize each team's win probability across a single game. In particular, let's plot the Eagles win probability across the game in their Week 1 match-up with the Falcons. 
 
 ```{r}
+#Filtering to a single game and generating tooltip info
 play_data_1game<-play_data2 |>
+  #Filtering to one game ID
   filter(game_id == 2018090600) |>
+  #Removing end of quarter plays with no win probability
   drop_na(wp) |>
-  mutate(play_time=(3600-game_seconds_remaining)/60,dummy=1) |>
+  #Creating play number variable
+  mutate(dummy=1) |>
   mutate(play_num=cumsum(dummy)) |>
-  select(home_team,away_team,home_wp,away_wp,play_time,play_num,qtr,time,desc) |>
+  #Constructing tooltip text
   mutate(tooltip=paste0("Quarter: ", qtr, 
                               "<br>Game Clock: ", time,
                               "<br>Play: ", desc, 
                               "<br>", home_team, " Win Probability: ", round(home_wp,3),
                         "<br>",away_team," Win Probability: ", round(away_wp,3)))
 
+#Creating static version of the plot with line color matching home team's primary color
 g<-ggplot(data=play_data_1game,aes(x=play_num,y=home_wp,color=home_team))+geom_line(linewidth=1.5)+scale_color_nfl(type = "primary") + 
   coord_cartesian(ylim=c(0,1))+
+  #Adding tooltip text into aesthetic for plotly
   geom_point(aes(text = tooltip), alpha = 0, size = 0.01, show.legend = FALSE)+
   labs(title="Win Probability for the Eagles in their Week 1 Game Against the Falcons",x="Play Number",y="Win Probability")
 
+#Converting to dynamic plotly with tooltips
 ggplotly(g,tooltip="text")
 ```
 
