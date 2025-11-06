@@ -1,0 +1,12 @@
+name: NFL_Plays_18_19
+title: NFL_Plays_18_19
+username: jcrews
+account: jcrews
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 15981310
+bundleId: 11137558
+url: https://jcrews.shinyapps.io/NFL_Plays_18_19/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE

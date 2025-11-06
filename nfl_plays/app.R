@@ -17,6 +17,8 @@ library(janitor)
 library(gtExtras)
 library(shinycssloaders)
 library(nflplotR)
+library(plotly)
+library(lubridate)
 
 #Reading in main dataset
 play_data<-read_csv("2018_2019_rp_plays.csv") |>
